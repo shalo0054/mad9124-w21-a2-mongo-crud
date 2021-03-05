@@ -1,48 +1,85 @@
 'use strict';
-const express = require("express");
-const validateCourseId = require("../middleware/courseValidation");
-const router = express.Router();
-const { courses } = require("../data/courseData");
+const Course = require('../models/Course.js');
+const router = require('express').Router();
+// const validateCourseId = require('../middleware/courseValidation');
 
-router.use("/:courseId", validateCourseId);
+// router.use('/:courseId', validateCourseId);
 
-router.get("/", (req, res) => res.send({ data: courses }));
-
-router.get("/:courseId", (req, res) => {
-  const course = courses.find((course) => course.id === parseInt(req.params.courseId));
-  res.send({ data: course });
+router.get('/', async (req, res) => {
+  const courses = await Course.find();
+  res.send({ data: courses });
 });
 
-router.post("/", (req, res) => {
-  const { code, title, description, url } = req.body;
-  const newCourse = {
-    id: Date.now(),
-    code,
-    title,
-    description,
-    url
+router.get('/:courseId', async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.courseId).populate('students');
+    if (!course) throw new Error('Resource not found');
+    res.send({ data: course });
+  } catch (err) {
+    sendResourceNotFound(req, res);
   }
-  courses.push(newCourse);
+});
+
+router.post('/', async (req, res) => {
+  let attributes = req.body;
+  delete attributes._id;
+
+  const newCourse = new Course(attributes);
+  await newCourse.save();
+
   res.status(201).send({ data: newCourse });
 });
 
-router.put("/:courseId", (req, res) => {
-  const { code, title, description, url } = req.body;
-  const updatedCourse = { code, title, description, url };
-  courses[req.courseIndex] = updatedCourse;
-  res.send({ data: updatedCourse });
+router.patch('/:courseId', async (req, res) => {
+  const { _id, id, ...otherAttributes } = req.body;
+  try {
+    const course = await Course.findByIdAndUpdate(
+      req.params.courseId,
+      { _id: req.params.courseId, ...otherAttributes },
+      { new: true, runValidators: true }
+    );
+    if (!course) throw new Error('Resource not found.');
+    res.send({ data: course });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
 
-router.patch("/:courseId", (req, res) => {
-  const { id, ...theRest } = req.body;
-  const updatedCourse = Object.assign({}, courses.id, theRest);
-  courses[req.courseIndex] = updatedCourse;
-  res.send({ data: updatedCourse });
+router.put('/:courseId', async (req, res) => {
+  const { _id, id, ...otherAttributes } = req.body;
+  try {
+    const course = await Course.findByIdAndUpdate(
+      req.params.courseId,
+      { _id: req.params.courseId, ...otherAttributes },
+      { new: true, overwrite: true, runValidators: true }
+    );
+    if (!course) throw new Error('Resource not found.');
+    res.send({ data: course });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
 
-router.delete("/:courseId", (req, res) => {
-  const deletedCourse = courses.splice(req.courseIndex, 1);
-  res.send({ data: deletedCourse[0] });
+router.delete('/:courseId', async (req, res) => {
+  try {
+    const course = await Course.findByIdAndRemove(req.params.courseId);
+    if (!course) throw new Error('Resource not found.');
+    res.send({ data: course });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
+
+function sendResourceNotFound(req, res) {
+  res.status(404).send({
+    errors: [
+      {
+        status: '404',
+        title: 'Resource does not exist',
+        description: `We could not find a car with id: ${req.params.courseId}`,
+      },
+    ],
+  });
+}
 
 module.exports = router;

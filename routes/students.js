@@ -1,48 +1,85 @@
 'use strict';
-const express = require("express");
-const validateStudentId = require("../middleware/studentValidation");
-const router = express.Router();
-const { students } = require("../data/studentData");
+const Student = require('../models/Student.js');
+const router = require('express').Router();
+// const validateStudentId = require('../middleware/studentValidation');
 
-router.use("/:studentId", validateStudentId);
+// router.use('/:studentId', validateStudentId);
 
-router.get("/", (req, res) => res.send({ data: students }));
-
-router.get("/:studentId", (req, res) => {
-  const student = students.find(student => student.id === parseInt(req.params.studentId));
-  res.send({ data: student });
+router.get('/', async (req, res) => {
+  const students = await Student.find();
+  res.send({ data: students });
 });
 
-router.post("/", (req, res) => {
-  const { firstName, LastName, nickName, email } = req.body;
-  const newStudent = {
-    id: Date.now(),
-    firstName,
-    LastName,
-    nickName,
-    email
+router.get('/:studentId', async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) throw new Error('Resource not found.');
+    res.send({ data: student });
+  } catch (err) {
+    sendResourceNotFound(req, res);
   }
-  students.push(newStudent);
+});
+
+router.post('/', async (req, res) => {
+  let attributes = req.body;
+  delete attributes._id;
+
+  const newStudent = new Student(attributes);
+  await newStudent.save();
+
   res.status(201).send({ data: newStudent });
 });
 
-router.put("/:studentId", (req, res) => {
-  const { firstName, lastName, nickName, email } = req.body;
-  const updatedStudent = { firstName, lastName, nickName, email };
-  students[req.studentIndex] = updatedStudent;
-  res.send({ data: updatedStudent });
+router.patch('/:studentId', async (req, res) => {
+  const { _id, id, ...otherAttributes } = req.body;
+  try {
+    const student = await Student.findByIdAndUpdate(
+      req.params.studentId,
+      { _id: req.params.studentId, ...otherAttributes },
+      { new: true, runValidators: true }
+    );
+    if (!student) throw new Error('Resource not found.');
+    res.send({ data: student });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
 
-router.patch("/:studentId", (req, res) => {
-  const { id, ...theRest } = req.body;
-  const updatedStudent = Object.assign({}, students.id, theRest);
-  students[req.studentIndex] = updatedStudent;
-  res.send({ data: updatedStudent });
+router.put('/:studentId', async (req, res) => {
+  const { _id, id, ...otherAttributes } = req.body;
+  try {
+    const student = await Student.findByIdAndUpdate(
+      req.params.studentId,
+      { _id: req.params.studentId, ...otherAttributes },
+      { new: true, overwrite: true, runValidators: true }
+    );
+    if (!student) throw new Error('Resourse not found.');
+    res.send({ data: student });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
 
-router.delete("/:studentId", (req, res) => {
-  const deletedStudent = students.splice(req.studentIndex, 1);
-  res.send({ data: deletedStudent[0] });
+router.delete('/:studentId', async (req, res) => {
+  try {
+    const student = await Student.findByIdAndRemove(req.params.studentId);
+    if (!student) throw new Error('Resource not found.');
+    res.send({ data: student });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
+
+function sendResourceNotFound(req, res) {
+  res.status(404).send({
+    errors: [
+      {
+        status: '404',
+        title: 'Resource does not exist',
+        description: `We could not find a person with id: ${req.params.studentId}`
+      }
+    ]
+  });
+}
 
 module.exports = router;
