@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const debug = require('debug')('mad9124-w21-a2-mongo-crud:db')
+const debug = require('debug')('mad9124-w21-a2-mongo-crud:db');
 
 mongoose
   .connect('mongodb://localhost:27017/A2', {

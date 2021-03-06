@@ -1,9 +1,9 @@
 'use strict';
 const Course = require('../models/Course.js');
 const router = require('express').Router();
-// const validateCourseId = require('../middleware/courseValidation');
+const sanitizeBody = require('../middleware/sanitizeBody.js');
 
-// router.use('/:courseId', validateCourseId);
+router.use('/', sanitizeBody);
 
 router.get('/', async (req, res) => {
   const courses = await Course.find();
@@ -12,7 +12,9 @@ router.get('/', async (req, res) => {
 
 router.get('/:courseId', async (req, res) => {
   try {
-    const course = await Course.findById(req.params.courseId).populate('students');
+    const course = await Course.findById(req.params.courseId).populate(
+      'students'
+    );
     if (!course) throw new Error('Resource not found');
     res.send({ data: course });
   } catch (err) {
@@ -21,17 +23,21 @@ router.get('/:courseId', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  let attributes = req.body;
+  let attributes = req.sanitizedBody;
   delete attributes._id;
 
-  const newCourse = new Course(attributes);
-  await newCourse.save();
-
-  res.status(201).send({ data: newCourse });
+  try {
+    const newCourse = new Course(attributes);
+    await newCourse.save();
+    if (!course) throw new Error('Resource not found.');
+    res.status(201).send({ data: newCourse });
+  } catch (err) {
+    sendResourceNotFound(req, res);
+  }
 });
 
 router.patch('/:courseId', async (req, res) => {
-  const { _id, id, ...otherAttributes } = req.body;
+  const { _id, id, ...otherAttributes } = req.sanitizedBody;
   try {
     const course = await Course.findByIdAndUpdate(
       req.params.courseId,
@@ -46,7 +52,7 @@ router.patch('/:courseId', async (req, res) => {
 });
 
 router.put('/:courseId', async (req, res) => {
-  const { _id, id, ...otherAttributes } = req.body;
+  const { _id, id, ...otherAttributes } = req.sanitizedBody;
   try {
     const course = await Course.findByIdAndUpdate(
       req.params.courseId,
@@ -76,9 +82,9 @@ function sendResourceNotFound(req, res) {
       {
         status: '404',
         title: 'Resource does not exist',
-        description: `We could not find a car with id: ${req.params.courseId}`,
-      },
-    ],
+        description: `We could not find a car with id: ${req.params.courseId}`
+      }
+    ]
   });
 }
 

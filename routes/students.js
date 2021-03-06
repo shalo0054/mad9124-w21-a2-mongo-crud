@@ -1,9 +1,9 @@
 'use strict';
 const Student = require('../models/Student.js');
 const router = require('express').Router();
-// const validateStudentId = require('../middleware/studentValidation');
+const sanitizeBody = require('../middleware/sanitizeBody.js');
 
-// router.use('/:studentId', validateStudentId);
+router.use('/', sanitizeBody);
 
 router.get('/', async (req, res) => {
   const students = await Student.find();
@@ -21,7 +21,7 @@ router.get('/:studentId', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  let attributes = req.body;
+  let attributes = req.sanitizedBody;
   delete attributes._id;
 
   const newStudent = new Student(attributes);
@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
 });
 
 router.patch('/:studentId', async (req, res) => {
-  const { _id, id, ...otherAttributes } = req.body;
+  const { _id, id, ...otherAttributes } = req.sanitizedBody;
   try {
     const student = await Student.findByIdAndUpdate(
       req.params.studentId,
@@ -46,7 +46,7 @@ router.patch('/:studentId', async (req, res) => {
 });
 
 router.put('/:studentId', async (req, res) => {
-  const { _id, id, ...otherAttributes } = req.body;
+  const { _id, id, ...otherAttributes } = req.sanitizedBody;
   try {
     const student = await Student.findByIdAndUpdate(
       req.params.studentId,
