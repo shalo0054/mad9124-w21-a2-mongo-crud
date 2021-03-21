@@ -29,7 +29,6 @@ router.post('/', async (req, res) => {
   try {
     const newCourse = new Course(attributes);
     await newCourse.save();
-    if (!course) throw new Error('Resource not found.');
     res.status(201).send({ data: newCourse });
   } catch (err) {
     sendResourceNotFound(req, res);
